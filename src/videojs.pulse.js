@@ -37,6 +37,8 @@
             var isFree = false;
             var readyforprerollFired = false;
             var contentUpdated = false;
+            var disabledCues = [ ];
+            var adPlayerOptions = options.adPlayerOptions || { };
 
             if(!OO || !OO.Pulse) {
                 throw new Error('The Pulse SDK is not included in the page. Be sure to load it before the Pulse plugin for videojs.');
@@ -68,9 +70,24 @@
             if(forceSharedElement) {
                 useShared = true;
                 log('Using shared element because pulse_force_shared parameter is present');
-            } else if(!isAutoplaySupported()) {
-                useShared = true;
-                log('Using shared element because autoplay support was not detected');
+            } else {
+                var autoplayMode = 'normal';
+
+                if(typeof OO.Pulse.getAutoplayMode === 'function') {
+                    autoplayMode = OO.Pulse.getAutoplayMode();
+                } else if(!isAutoplaySupported()) {
+                    autoplayMode = 'shared';
+                }
+
+                if(autoplayMode === 'shared') {
+                    useShared = true;
+                    log('Using shared element because autoplay support was not detected');
+                } else if(autoplayMode === 'muted') {
+                    adPlayerOptions.setAutoplayAttributes = true;
+                    log('Using setAutoplayAttributes because autoplay support was not detected');
+                } else if(autoplayMode !== 'normal') {
+                    log('Received unknown autoplay mode: ', autoplayMode, '; it will be ignored');
+                }
             }
 
             if(useShared) {
@@ -84,8 +101,12 @@
                 });
             }
 
+            // Whatever they send us, override some stuff we know better:
+            adPlayerOptions.adContainerElement = adContainerDiv;
+            adPlayerOptions.sharedElement = sharedElement;
+            adPlayerOptions.customBehaviours = customBehaviours;
 
-            adPlayer = OO.Pulse.createAdPlayer(adContainerDiv, null, sharedElement, customBehaviours);
+            adPlayer = OO.Pulse.createAdPlayer(adPlayerOptions);
 
             // Hide the videojs spinner when ads are playing; hide poster, player if options.hidePoster is true
             (function(){
@@ -123,6 +144,48 @@
             adPlayer.addEventListener(OO.Pulse.AdPlayer.Events.AD_BREAK_FINISHED, function() {
                 player.trigger('ads-pod-ended');
             });
+
+            adPlayer.addEventListener(OO.Pulse.AdPlayer.Events.LINEAR_AD_STARTED, function() {
+                // Disable captions
+                hideTextTracks();
+            });
+
+            function showTextTracks() {
+                if(!sharedElement) {
+                    return;
+                }
+
+                var enabledCues = 0;
+                for(var i = 0; i < disabledCues.length; ++i) {
+                    disabledCues[i].mode = 'showing';
+                    ++enabledCues;
+                }
+
+                disabledCues = [ ];
+                if(enabledCues > 0) {
+                    log(enabledCues + ' caption tracks enabled after ad playback');
+                }
+            }
+
+            function hideTextTracks() {
+                if(!sharedElement) {
+                    return;
+                }
+
+                showTextTracks();
+                
+                for(var i = 0; i < player.textTracks().length; ++i) {
+                    var track = sharedElement.textTracks[i];
+                    if(track && mode in track && track.mode === 'showing') {
+                        track.mode = 'disabled';
+                        disabledCues.push(track);
+                    }
+                }
+
+                if(disabledCues.length > 0) {
+                    log(disabledCues.length + ' caption tracks disabled during ad playback');
+                }
+            }
 
             var createSession = function() {
                 if(session === null) {
@@ -708,7 +771,8 @@
             //Ad player listener interface for the ad player
             var adPlayerListener = {
                 startContentPlayback : function(){
-                    if(sharedElement){
+                    showTextTracks();
+                    if(sharedElement) {
                         sharedElement.style.display = 'block'; // Make sure the shared element is visible
                     }
                     firstPlay = false;
