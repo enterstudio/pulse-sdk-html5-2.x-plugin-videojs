@@ -176,7 +176,7 @@
                 
                 for(var i = 0; i < player.textTracks().length; ++i) {
                     var track = sharedElement.textTracks[i];
-                    if(track.mode === 'showing') {
+                    if(track && mode in track && track.mode === 'showing') {
                         track.mode = 'disabled';
                         disabledCues.push(track);
                     }
