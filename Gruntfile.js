@@ -25,7 +25,7 @@ module.exports = function(grunt) {
                 options: {
                     process: function(source, filepath) {
                         console.log(filepath);
-                        if (filepath.indexOf('brightcove.pulse.js') > -1) {
+                        if (filepath.indexOf('videojs.pulse.js') > -1) {
                             return source.replace('@VERSION', grunt.template.process('<%= pkg.version %>'));
                         }
 
