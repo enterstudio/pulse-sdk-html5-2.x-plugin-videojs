@@ -713,7 +713,10 @@
                     insertionPointFilter: sessionSettings.insertionPointFilter,
                     referrerUrl: sessionSettings.referrerUrl,
                     linearSlotSize: sessionSettings.linearSlotSize,
-                    maxLinearBreakDuration: sessionSettings.maxLinearBreakDuration
+                    maxLinearBreakDuration: sessionSettings.maxLinearBreakDuration,
+                    enforceCacheBusting: sessionSettings.enforceCacheBusting,
+                    useVASTSkipOffset: sessionSettings.useVASTSkipOffset,
+                    seekMode: sessionSettings.seekMode
                 };
 
                 requestSettings.width = requestSettings.width || player.width();
