@@ -39,6 +39,7 @@
             var contentUpdated = false;
             var disabledCues = [ ];
             var adPlayerOptions = options.adPlayerOptions || { };
+            var isContentStartedReported = false;
 
             if(!OO || !OO.Pulse) {
                 throw new Error('The Pulse SDK is not included in the page. Be sure to load it before the Pulse plugin for videojs.');
@@ -103,7 +104,7 @@
 
             // Whatever they send us, override some stuff we know better:
             adPlayerOptions.adContainerElement = adContainerDiv;
-            adPlayerOptions.sharedElement = sharedElement;
+            adPlayerOptions.sharedVideoElement = sharedElement;
             adPlayerOptions.customBehaviours = customBehaviours;
 
             adPlayer = OO.Pulse.createAdPlayer(adPlayerOptions);
@@ -222,7 +223,11 @@
                     }
                 } else if(!isFree) {
                     delete vjsControls.el().style['z-index'];
-                    adPlayer.contentStarted();
+                    if (!isContentStartedReported) {
+                     adPlayer.contentStarted();
+                     isContentStartedReported = true;
+                    }
+
                 }
             });
 
@@ -231,6 +236,7 @@
                     pauseAdTimeout = setTimeout(function() {
                         pauseAdTimeout = null;
                         adPlayer.contentPaused();
+                        isContentStartedReported = false;
                     }, 100);
                 }
             });
@@ -565,8 +571,9 @@
             function contentPlayback(event){
                 player.removeClass('vjs-pulse-hideposter');
 
-                if(sessionIsValid()) {
+                if(sessionIsValid() && !isContentStartedReported) {
                     adPlayer.contentStarted();
+                    isContentStartedReported = true;
                 }
             }
 
@@ -801,6 +808,7 @@
 
                     log('Paused; starting linear ad mode with state ' + player.ads.state);
                     player.ads.startLinearAdMode();
+                    isContentStartedReported = false;
 
                     setPointerEventsForClick();
                     isInLinearAdMode = true;
