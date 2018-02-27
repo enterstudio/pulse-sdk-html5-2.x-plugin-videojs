@@ -40,6 +40,7 @@
             var disabledCues = [ ];
             var adPlayerOptions = options.adPlayerOptions || { };
             var isContentStartedReported = false;
+            var waitingForUserInteraction = false;
 
             if(!OO || !OO.Pulse) {
                 throw new Error('The Pulse SDK is not included in the page. Be sure to load it before the Pulse plugin for videojs.');
@@ -202,11 +203,11 @@
                         player.ads.tryToResumeTimeout_ = null;
                         player.play();
                     }
-                } else if(player.playlist && playlistCurrentItem !== player.playlist.currentItem()){
-                    //The video was changed, we need to stop the previous session
-                    resetPlugin();
-                    playlistCurrentItem = player.playlist.currentItem();
-                    createSession();
+                // } else if(player.playlist && playlistCurrentItem !== player.playlist.currentItem()){
+                //     //The video was changed, we need to stop the previous session
+                //     resetPlugin();
+                //     playlistCurrentItem = player.playlist.currentItem();
+                //     createSession();
                 } else if(contentUpdated) {
                     contentUpdated = false;
                     resetPlugin();
@@ -529,12 +530,18 @@
                 } else {
                     // Init session with a combination of media and page level metadata
                     doInitSession(mediaMetadata, pageMetadata);
-                    player.pulse.startSession(session);
+                    if (!waitingForUserInteraction) {
+                        player.pulse.startSession(session);
+                    } else {
+                        player.pause();
+                        vjsControls.show();
+                    }
                 }
 
             }
 
             function contentUpdate() {
+                waitingForUserInteraction = true;
                 if(!readyforprerollFired) {
                     // src() called without an initial play first
                     return;
