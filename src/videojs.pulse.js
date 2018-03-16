@@ -37,10 +37,12 @@
             var isFree = false;
             var readyforprerollFired = false;
             var contentUpdated = false;
+            var playerPausedBeforeUpdate = false;
             var disabledCues = [ ];
             var adPlayerOptions = options.adPlayerOptions || { };
             var isContentStartedReported = false;
-            var waitingForUserInteraction = false;
+            var waitingForUserInteraction = options.waitForUserInteraction || false;
+            var promise;
 
             if(!OO || !OO.Pulse) {
                 throw new Error('The Pulse SDK is not included in the page. Be sure to load it before the Pulse plugin for videojs.');
@@ -201,7 +203,14 @@
                         //Workaround to avoid contrib-ads to force restart the video. Probably a bug in contrib-ads
                         player.clearTimeout(player.ads.tryToResumeTimeout_);
                         player.ads.tryToResumeTimeout_ = null;
-                        player.play();
+                        promise = player.play();
+                        if (promise !== undefined) {
+                            promise.then(function(v){
+                                // fulfillment
+                            }, function(r){
+                                // rejection
+                            });
+                        }
                     }
                 // } else if(player.playlist && playlistCurrentItem !== player.playlist.currentItem()){
                 //     //The video was changed, we need to stop the previous session
@@ -542,6 +551,7 @@
 
             function contentUpdate() {
                 waitingForUserInteraction = true;
+                playerPausedBeforeUpdate = evt.target.player.paused();
                 if(!readyforprerollFired) {
                     // src() called without an initial play first
                     return;
@@ -806,7 +816,16 @@
 
                     vjsControls.show();
                     removePointerEventsForClick();
-                    player.play();
+                    if (!playerPausedBeforeUpdate) {
+                        promise = player.play();
+                        if (promise !== undefined) {
+                            promise.then(function(v) {
+                                // fulfillment
+                            }, function(r){
+                                // rejection
+                            });
+                        }
+                    }
                 },
                 pauseContentPlayback : function(){
                     contentPaused = true;
@@ -855,5 +874,5 @@
         })(this);
     };
 
-    vjs.plugin('pulse', pulsePlugin);
+    vjs[typeof vjs.registerPlugin === "function" ? "registerPlugin" : "plugin"]('pulse', pulsePlugin);
 })(window.videojs);
